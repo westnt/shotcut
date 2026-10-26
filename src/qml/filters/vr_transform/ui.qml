@@ -44,6 +44,7 @@ Item {
         pitchKeyframesButton.checked = filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount("pitch") > 0;
         rollSlider.value = filter.getDouble("roll", position);
         rollKeyframesButton.checked = filter.animateIn <= 0 && filter.animateOut <= 0 && filter.keyframeCount("roll") > 0;
+        transparentCheck.checked = filter.get("transparent") === "" || filter.getDouble("transparent") !== 0;
         blockUpdate = false;
     }
 
@@ -175,6 +176,8 @@ Item {
                 rollEnd = filter.getDouble("roll", filter.duration - 1);
         }
         if (filter.isNew)
+            filter.set("transparent", 1);
+        if (filter.isNew)
             filter.savePreset(preset.parameters);
         setControls();
     }
@@ -192,7 +195,7 @@ Item {
         Shotcut.Preset {
             id: preset
 
-            parameters: ["yaw", "pitch", "roll", "packing", "lon_min", "lon_max", "swap_eyes"]
+            parameters: ["yaw", "pitch", "roll", "packing", "lon_min", "lon_max", "swap_eyes", "transparent"]
             Layout.columnSpan: 3
             onBeforePresetLoaded: {
                 filter.resetProperty('yaw');
@@ -367,6 +370,20 @@ Item {
                 Layout.columnSpan: 3
                 text: qsTr('Copy Parameters')
                 onClicked: filter.copyParameters()
+            }
+        }
+
+        Label {}
+
+        CheckBox {
+            id: transparentCheck
+
+            Layout.columnSpan: 3
+            text: qsTr('Transparent outside the picture')
+            onClicked: filter.set('transparent', checked ? 1 : 0)
+
+            Shotcut.HoverTip {
+                text: qsTr('Where the turned view leaves the picture, show the tracks below instead of black')
             }
         }
 

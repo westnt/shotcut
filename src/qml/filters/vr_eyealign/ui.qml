@@ -20,17 +20,19 @@ Item {
         pitchSlider.value = filter.getDouble('pitch', position);
         rollSlider.value = filter.getDouble('roll', position);
         splitCheck.checked = filter.get('split') === '1';
+        transparentCheck.checked = filter.get('transparent') === '1';
         blockUpdate = false;
     }
 
     width: 350
-    height: 226
+    height: 260
     Component.onCompleted: {
         if (filter.isNew) {
             filter.set('yaw', 0);
             filter.set('pitch', 0);
             filter.set('roll', 0);
             filter.set('split', 1);
+            filter.set('transparent', 1);
             filter.savePreset(preset.parameters);
         }
         setControls();
@@ -49,7 +51,7 @@ Item {
         Shotcut.Preset {
             id: preset
 
-            parameters: ['packing', 'lon_min', 'lon_max', 'swap_eyes', 'yaw', 'pitch', 'roll', 'split']
+            parameters: ['packing', 'lon_min', 'lon_max', 'swap_eyes', 'yaw', 'pitch', 'roll', 'split', 'transparent']
             Layout.columnSpan: 2
             onPresetSelected: setControls()
         }
@@ -152,6 +154,16 @@ Item {
             Layout.columnSpan: 2
             text: qsTr('Split between both eyes')
             onClicked: filter.set('split', checked ? 1 : 0)
+        }
+
+        Label {}
+
+        CheckBox {
+            id: transparentCheck
+
+            Layout.columnSpan: 2
+            text: qsTr('Transparent outside the picture')
+            onClicked: filter.set('transparent', checked ? 1 : 0)
         }
 
         Item {
