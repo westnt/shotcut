@@ -158,6 +158,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   transportcontrol.h
   util.cpp util.h
   videowidget.cpp videowidget.h
+  vrpreview.cpp vrpreview.h
   hdrpreviewwindow.cpp hdrpreviewwindow.h
   widgets/alsawidget.cpp widgets/alsawidget.h
   widgets/alsawidget.ui
@@ -295,7 +296,15 @@ if(QSB_EXECUTABLE)
       COMMENT "Compiling HDR gain shader"
     )
   endif()
-  add_custom_target(hdr_shaders ALL DEPENDS ${HDR_GAIN_QSB})
+  set(VR_VIEW_FRAG ${CMAKE_CURRENT_SOURCE_DIR}/qml/modules/Shotcut/Controls/vr_view.frag)
+  set(VR_VIEW_QSB ${CMAKE_CURRENT_SOURCE_DIR}/qml/modules/Shotcut/Controls/vr_view.frag.qsb)
+  add_custom_command(
+    OUTPUT ${VR_VIEW_QSB}
+    COMMAND ${QSB_EXECUTABLE} --glsl "100 es,120,150" --hlsl 50 --msl 12 -o ${VR_VIEW_QSB} ${VR_VIEW_FRAG}
+    DEPENDS ${VR_VIEW_FRAG}
+    COMMENT "Compiling VR preview shader"
+  )
+  add_custom_target(hdr_shaders ALL DEPENDS ${HDR_GAIN_QSB} ${VR_VIEW_QSB})
   add_dependencies(shotcut hdr_shaders)
 endif()
 

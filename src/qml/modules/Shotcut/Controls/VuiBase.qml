@@ -39,6 +39,136 @@ DropArea {
         fillMode: VideoOutput.Stretch
     }
 
+    // VR look-around preview (player toolbar "VR" button). Preview only: the frame is captured after all
+    // filters and reprojected on the GPU, so dragging is instant even while paused.
+    readonly property bool _vrOn: vrPreview.enabled && !video.oldVideoOutput
+
+    ShaderEffectSource {
+        id: vrSource
+        sourceItem: _vrOn ? videoOutput : null
+        hideSource: _vrOn
+        live: true
+        visible: false
+        smooth: true
+        textureSize: Qt.size(Math.min(profile.width, 8192), Math.min(profile.height, 8192))
+    }
+
+    Item {
+        id: vrLayer
+
+        anchors.fill: parent
+        visible: _vrOn
+        z: 1000
+
+        Rectangle {
+            anchors.fill: parent
+            color: "black"
+        }
+
+        ShaderEffect {
+            readonly property real _tanH: Math.tan(vrPreview.fov * Math.PI / 360)
+            property variant src: vrSource
+            property vector4d leftRect: vrPreview.leftRect
+            property vector4d rightRect: vrPreview.rightRect
+            property vector4d lonLatRange: vrPreview.lonLatRange
+            property point tanFov: Qt.point(_tanH, _tanH * height / Math.max(1, width))
+            property point texelSize: Qt.point(1 / Math.max(1, vrSource.textureSize.width), 1 / Math.max(1, vrSource.textureSize.height))
+            property real yawRad: vrPreview.yaw * Math.PI / 180
+            property real pitchRad: vrPreview.pitch * Math.PI / 180
+            property int eyeMode: vrPreview.eye
+            property int full360: vrPreview.full360 ? 1 : 0
+
+            anchors.fill: parent
+            fragmentShader: "vr_view.frag.qsb"
+        }
+
+        MouseArea {
+            property real lastX: 0
+            property real lastY: 0
+
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            onPressed: mouse => {
+                lastX = mouse.x;
+                lastY = mouse.y;
+            }
+            onPositionChanged: mouse => {
+                // Grab the world: the picture follows the mouse.
+                var degPerPx = vrPreview.fov / Math.max(1, width);
+                vrPreview.look(vrPreview.yaw - (mouse.x - lastX) * degPerPx, vrPreview.pitch + (mouse.y - lastY) * degPerPx, vrPreview.fov);
+                lastX = mouse.x;
+                lastY = mouse.y;
+            }
+            onDoubleClicked: vrPreview.faceFront()
+            onWheel: wheel => {
+                var factor = Math.pow(0.9, wheel.angleDelta.y / 120);
+                vrPreview.look(vrPreview.yaw, vrPreview.pitch, vrPreview.fov * factor);
+            }
+        }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            anchors.margins: 8
+            width: vrReadout.implicitWidth + 12
+            height: vrReadout.implicitHeight + 6
+            radius: 3
+            color: "#99000000"
+
+            Text {
+                id: vrReadout
+
+                anchors.centerIn: parent
+                color: "white"
+                font.pointSize: 9
+                text: [qsTr("Left eye"), qsTr("Right eye"), qsTr("Anaglyph")][vrPreview.eye] + "  ·  " + vrPreview.layoutName + "  ·  " + Math.round(vrPreview.fov) + "°"
+            }
+        }
+
+        Rectangle {
+            id: vrHint
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: 12
+            width: vrHintText.implicitWidth + 16
+            height: vrHintText.implicitHeight + 8
+            radius: 3
+            color: "#99000000"
+            opacity: 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 400
+                }
+            }
+
+            Text {
+                id: vrHintText
+
+                anchors.centerIn: parent
+                color: "white"
+                font.pointSize: 9
+                text: qsTr("Drag to look  ·  Scroll to zoom  ·  Double-click to face front  ·  Preview only")
+            }
+
+            Timer {
+                id: vrHintTimer
+
+                interval: 4000
+                onTriggered: vrHint.opacity = 0
+            }
+        }
+
+        onVisibleChanged: {
+            if (visible) {
+                vrHint.opacity = 1;
+                vrHintTimer.restart();
+            }
+        }
+    }
+
     Canvas {
         id: grid
 

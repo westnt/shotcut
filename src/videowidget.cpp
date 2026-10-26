@@ -23,6 +23,7 @@
 #include "qmltypes/qmlutilities.h"
 #include "settings.h"
 #include "util.h"
+#include "vrpreview.h"
 
 #include <Mlt.h>
 #include <functional>
@@ -93,6 +94,7 @@ VideoWidget::VideoWidget(QObject *parent)
     engine()->addImportPath(importPath.path());
     QmlUtilities::setCommonProperties(rootContext());
     rootContext()->setContextProperty("video", this);
+    rootContext()->setContextProperty("vrPreview", &VrPreview::singleton());
     m_refreshTimer.setInterval(10);
     m_refreshTimer.setSingleShot(true);
 

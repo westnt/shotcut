@@ -24,6 +24,7 @@
 #include "proxymanager.h"
 #include "scrubbar.h"
 #include "settings.h"
+#include "vrpreview.h"
 #include "widgets/audioscale.h"
 #include "widgets/docktoolbar.h"
 #include "widgets/newprojectfolder.h"
@@ -380,6 +381,45 @@ Player::Player(QWidget *parent)
     m_gridButton->setCheckable(true);
     m_gridButton->setToolTip(tr("Toggle grid display on the player"));
     m_optionsToolBar->addWidget(m_gridButton);
+    // VR look-around preview button (preview only; never changes the project or the export).
+    if (!Settings.playerOldVideoOutput()) {
+        VrPreview &vr = VrPreview::singleton();
+        auto *vrButton = new QToolButton;
+        auto *vrMenu = new QMenu(this);
+        auto *eyeGroup = new QActionGroup(this);
+        const QStringList eyeNames = {tr("Left Eye"), tr("Right Eye"), tr("Anaglyph (Red/Cyan)")};
+        for (int i = 0; i < eyeNames.size(); ++i) {
+            QAction *a = vrMenu->addAction(eyeNames[i]);
+            a->setCheckable(true);
+            a->setChecked(vr.eye() == i);
+            eyeGroup->addAction(a);
+            connect(a, &QAction::triggered, this, [i]() { VrPreview::singleton().setEye(i); });
+        }
+        vrMenu->addSeparator();
+        auto *layoutGroup = new QActionGroup(this);
+        for (int i = VrPreview::Auto; i < VrPreview::LayoutCount; ++i) {
+            QAction *a = vrMenu->addAction(VrPreview::layoutLabel(i));
+            a->setCheckable(true);
+            a->setChecked(vr.layout() == i);
+            layoutGroup->addAction(a);
+            connect(a, &QAction::triggered, this, [i]() { VrPreview::singleton().setLayout(i); });
+            if (i == VrPreview::Auto)
+                vrMenu->addSeparator();
+        }
+        vrMenu->addSeparator();
+        vrMenu->addAction(tr("Face Front"), this, []() { VrPreview::singleton().faceFront(); });
+        vrButton->setMenu(vrMenu);
+        vrButton->setPopupMode(QToolButton::MenuButtonPopup);
+        vrButton->setCheckable(true);
+        vrButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        vrButton->setText(tr("VR"));
+        vrButton->setToolTip(
+            tr("Look around a VR clip in the player: drag to look, scroll to zoom, double-click to "
+               "face front. Preview only."));
+        connect(vrButton, &QToolButton::toggled, &vr, &VrPreview::setEnabled);
+        connect(&vr, &VrPreview::enabledChanged, vrButton, &QToolButton::setChecked);
+        m_optionsToolBar->addWidget(vrButton);
+    }
     // Add volume control to toolbar.
     m_volumeButton = new QToolButton;
     m_volumeButton->setObjectName(QString::fromUtf8("volumeButton"));
