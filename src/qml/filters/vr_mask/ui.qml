@@ -26,12 +26,13 @@ Item {
         crop_lat_maxSlider.value = filter.getDouble('crop_lat_max', position);
         cap_radiusSlider.value = filter.getDouble('cap_radius', position);
         featherSlider.value = filter.getDouble('feather', position);
+        transparentCheck.checked = filter.get('transparent') === '1';
         colorPicker.value = filter.get('color');
         blockUpdate = false;
     }
 
     width: 350
-    height: 464
+    height: 498
     Component.onCompleted: {
         if (filter.isNew) {
             filter.set('mode', 'fov');
@@ -44,6 +45,7 @@ Item {
             filter.set('crop_lat_max', 90);
             filter.set('cap_radius', 20);
             filter.set('feather', 5);
+            filter.set('transparent', 1);
             filter.set('color', '#ff000000');
             filter.savePreset(preset.parameters);
         }
@@ -63,7 +65,7 @@ Item {
         Shotcut.Preset {
             id: preset
 
-            parameters: ['packing', 'lon_min', 'lon_max', 'swap_eyes', 'mode', 'fov', 'center_lon', 'center_lat', 'crop_lon_min', 'crop_lon_max', 'crop_lat_min', 'crop_lat_max', 'cap_radius', 'feather', 'color']
+            parameters: ['packing', 'lon_min', 'lon_max', 'swap_eyes', 'mode', 'fov', 'center_lon', 'center_lat', 'crop_lon_min', 'crop_lon_max', 'crop_lat_min', 'crop_lat_max', 'cap_radius', 'feather', 'transparent', 'color']
             Layout.columnSpan: 2
             onPresetSelected: setControls()
         }
@@ -331,6 +333,16 @@ Item {
 
         Shotcut.UndoButton {
             onClicked: featherSlider.value = 5
+        }
+
+        Label {}
+
+        CheckBox {
+            id: transparentCheck
+
+            Layout.columnSpan: 2
+            text: qsTr('Transparent masked area (off: fill with the colour)')
+            onClicked: filter.set('transparent', checked ? 1 : 0)
         }
 
         Label {
