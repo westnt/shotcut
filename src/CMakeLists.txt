@@ -153,6 +153,7 @@ add_executable(shotcut WIN32 MACOSX_BUNDLE
   spatialmedia/container.cpp spatialmedia/container.h
   spatialmedia/mpeg4_container.cpp spatialmedia/mpeg4_container.h
   spatialmedia/sa3d.cpp spatialmedia/sa3d.h
+  spatialmedia/sv3d.cpp spatialmedia/sv3d.h
   spatialmedia/spatialmedia.cpp spatialmedia/spatialmedia.h
   transportcontrol.h
   util.cpp util.h

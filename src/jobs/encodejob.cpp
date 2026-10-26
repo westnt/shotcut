@@ -72,6 +72,14 @@ EncodeJob::EncodeJob(const QString &name,
     connect(action, SIGNAL(triggered()), this, SLOT(onSpatialMediaTriggered()));
     m_successActions << action;
 
+    action = new QAction(tr("Set VR180 Side-by-Side..."), this);
+    connect(action, SIGNAL(triggered()), this, SLOT(onSpatialMediaVR180Triggered()));
+    m_successActions << action;
+
+    action = new QAction(tr("Set 360° Stereo Top/Bottom..."), this);
+    connect(action, SIGNAL(triggered()), this, SLOT(onSpatialMedia360StereoTriggered()));
+    m_successActions << action;
+
     action = new QAction(tr("Embed Markers as Chapters..."), this);
     connect(action, SIGNAL(triggered()), this, SLOT(onEmbedChapters()));
     m_successActions << action;
@@ -169,6 +177,44 @@ void EncodeJob::onSpatialMediaTriggered()
             MAIN.showStatusMessage(tr("An error occurred saving the projection."));
         }
     }
+}
+
+// Spherical Video V2 metadata for stereo VR (st3d + sv3d with equirect bounds); see spatialmedia.h.
+static void injectSphericalV2Dialog(const QString &source, SpatialMedia::StereoMode stereo, const double bounds[4],
+                                    const QString &suffixTag)
+{
+    QFileInfo info(source);
+    QString directory = QStringLiteral("%1/%2%3.%4")
+                            .arg(Settings.encodePath())
+                            .arg(info.completeBaseName())
+                            .arg(suffixTag)
+                            .arg(info.suffix());
+    QString filePath = QFileDialog::getSaveFileName(&MAIN,
+                                                    QObject::tr("Set VR Projection"),
+                                                    directory,
+                                                    QString(),
+                                                    nullptr,
+                                                    Util::getFileDialogOptions());
+    if (!filePath.isEmpty()) {
+        if (SpatialMedia::injectSphericalV2(source.toStdString(), filePath.toStdString(), stereo, bounds)) {
+            MAIN.showStatusMessage(QObject::tr("Successfully wrote %1").arg(QFileInfo(filePath).fileName()));
+        } else {
+            MAIN.showStatusMessage(QObject::tr("An error occurred saving the projection."));
+        }
+    }
+}
+
+void EncodeJob::onSpatialMediaVR180Triggered()
+{
+    // 180 x 180 per eye, side by side: crop a quarter of the sphere's width on each side.
+    const double bounds[4] = {0.0, 0.0, 0.25, 0.25};
+    injectSphericalV2Dialog(objectName(), SpatialMedia::LeftRight, bounds, QStringLiteral("_180_LR"));
+}
+
+void EncodeJob::onSpatialMedia360StereoTriggered()
+{
+    const double bounds[4] = {0.0, 0.0, 0.0, 0.0};
+    injectSphericalV2Dialog(objectName(), SpatialMedia::TopBottom, bounds, QStringLiteral("_360_TB"));
 }
 
 void EncodeJob::onEmbedChapters()

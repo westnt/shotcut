@@ -35,6 +35,8 @@ public:
 private slots:
     void onVideoQualityTriggered();
     void onSpatialMediaTriggered();
+    void onSpatialMediaVR180Triggered();
+    void onSpatialMedia360StereoTriggered();
     void onEmbedChapters();
 
 protected slots:

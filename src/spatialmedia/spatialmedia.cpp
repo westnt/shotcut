@@ -18,6 +18,9 @@
  ****************************************************************************/
 
 #include "spatialmedia.h"
+#include "sv3d.h"
+#include <cmath>
+#include <cstring>
 #include "mpeg4_container.h"
 #include "sa3d.h"
 
@@ -141,7 +144,9 @@ static int get_aac_num_channels(Box *mp4aBox, std::fstream &inFile)
 static bool sound_samples_contains(const char *name)
 {
     auto nameSize = sizeof(Box::m_name);
-    auto size = sizeof(constants::SOUND_SAMPLE_DESCRIPTIONS) / nameSize;
+    // Number of entries, not sizeof(array) / 4: the array holds pointers, so the old expression read 12 garbage
+    // pointers past the end for every non-mp4a sample entry (latent crash, exposed by -O1 + new constants).
+    auto size = sizeof(constants::SOUND_SAMPLE_DESCRIPTIONS) / sizeof(constants::SOUND_SAMPLE_DESCRIPTIONS[0]);
     for (int i = 0; i < size; i++) {
         if (!memcmp(name, constants::SOUND_SAMPLE_DESCRIPTIONS[i], nameSize))
             return true;
@@ -311,4 +316,72 @@ bool SpatialMedia::injectSpherical(const std::string& strInFile, const std::stri
         return false;
     }
     return true;
+}
+
+
+// ---------------------------------------------------------------- Spherical Video V2 (vredit port)
+static bool add_v2_to_video_entries(Box *pBox, uint8_t stereo, const uint32_t bounds[4], int32_t y, int32_t p, int32_t r,
+                                    int &count)
+{
+    if (pBox->type() != constants::Container) return true;
+    Container *c = static_cast<Container *>(pBox);
+    for (auto *child : c->m_listContents) {
+        bool isVideoEntry = false;
+        for (auto *tag : constants::VIDEO_SAMPLE_DESCRIPTIONS)
+            if (memcmp(child->m_name, tag, 4) == 0) isVideoEntry = true;
+        if (isVideoEntry && child->type() == constants::Container) {
+            Container *entry = static_cast<Container *>(child);
+            entry->remove(constants::TAG_ST3D);
+            entry->remove(constants::TAG_SV3D);
+            if (!entry->add(st3d_create(stereo)) || !entry->add(sv3d_create(bounds, y, p, r))) return false;
+            ++count;
+        } else if (!add_v2_to_video_entries(child, stereo, bounds, y, p, r, count)) {
+            return false;
+        }
+    }
+    return true;  // sizes are recomputed by Mpeg4Container::save() -> resize()
+}
+
+bool SpatialMedia::injectSphericalV2(const std::string &strInFile, const std::string &strOutFile, StereoMode stereo,
+                                     const double bounds[4], double yaw, double pitch, double roll)
+{
+    std::fstream inFile(strInFile.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
+    if (!inFile.is_open()) {
+        LOG_ERROR() << "Error \"" << strInFile.c_str() << "\" does not exist or do not have permission.";
+        return false;
+    }
+    auto mpeg4 = Mpeg4Container::load(inFile);
+    if (!mpeg4 || !mpeg4->m_pMoovBox) {
+        LOG_ERROR() << "Error, file could not be opened.";
+        return false;
+    }
+    uint32_t b[4];
+    for (int i = 0; i < 4; ++i) {
+        double f = std::min(std::max(bounds[i], 0.0), 1.0);
+        b[i] = (uint32_t) std::min(std::llround(f * 4294967296.0), (long long) 0xFFFFFFFF);
+    }
+    auto fix = [](double deg) { return (int32_t) std::llround(deg * 65536.0); };
+    // Spatial audio: same SA3D handling as the V1 path (first-order ambisonics = 4-channel tracks).
+    if (mpeg4->m_pMoovBox->type() == constants::Container) {
+        for (auto *trak : static_cast<Container *>(mpeg4->m_pMoovBox)->m_listContents) {
+            if (memcmp(trak->m_name, constants::TAG_TRAK, 4) != 0 || trak->type() != constants::Container) continue;
+            for (auto *mdia : static_cast<Container *>(trak)->m_listContents)
+                if (memcmp(mdia->m_name, constants::TAG_MDIA, 4) == 0 && mdia->type() == constants::Container)
+                    mpeg4_add_spatial_audio(static_cast<Container *>(mdia), inFile);
+        }
+    }
+    int count = 0;
+    if (!add_v2_to_video_entries(mpeg4->m_pMoovBox, (uint8_t) stereo, b, fix(yaw), fix(pitch), fix(roll), count)
+        || count == 0) {
+        LOG_ERROR() << "Error failed to insert spherical V2 data";
+        return false;
+    }
+    std::fstream outFile(strOutFile.c_str(), std::ios::out | std::ios::binary);
+    if (!outFile.is_open()) {
+        LOG_ERROR() << "Error file: \"" << strOutFile.c_str() << "\" could not create or do not have permission.";
+        return false;
+    }
+    mpeg4->save(inFile, outFile, 0);
+    outFile.flush();
+    return (bool) inFile && (bool) outFile;
 }

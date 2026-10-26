@@ -116,7 +116,27 @@ static const char * SOUND_SAMPLE_DESCRIPTIONS[12] = {
     TAG_MP4A
 };
 
-static const char * CONTAINERS_LIST[20] = {
+// Visual sample entries: loaded as containers (after their fixed 78-byte header) so st3d / sv3d can be added
+// inside them, as Google's spatial-media V2 does (vredit port, see port/shotcut/README.md).
+static const char *TAG_AVC1 = "avc1";
+static const char *TAG_AVC3 = "avc3";
+static const char *TAG_HVC1 = "hvc1";
+static const char *TAG_HEV1 = "hev1";
+static const char *TAG_ST3D = "st3d";
+static const char *TAG_SV3D = "sv3d";
+static const char *TAG_SVHD = "svhd";
+static const char *TAG_PROJ = "proj";
+static const char *TAG_PRHD = "prhd";
+static const char *TAG_EQUI = "equi";
+
+static const char * VIDEO_SAMPLE_DESCRIPTIONS[4] = {
+    TAG_AVC1,
+    TAG_AVC3,
+    TAG_HVC1,
+    TAG_HEV1
+};
+
+static const char * CONTAINERS_LIST[24] = {
     TAG_MDIA,
     TAG_MINF,
     TAG_MOOV,
@@ -137,7 +157,12 @@ static const char * CONTAINERS_LIST[20] = {
     TAG_ULAW,
     TAG_ALAW,
     TAG_LPCM,
-    TAG_MP4A
+    TAG_MP4A,
+
+    TAG_AVC1,
+    TAG_AVC3,
+    TAG_HVC1,
+    TAG_HEV1
 };
 
   enum Type {

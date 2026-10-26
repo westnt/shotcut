@@ -110,6 +110,11 @@ Box *Container::load ( std::fstream &fs, uint32_t iPos, uint32_t iEnd )
       }
     }
   }
+  iArrSize = (int32_t)(sizeof(constants::VIDEO_SAMPLE_DESCRIPTIONS)/sizeof(constants::VIDEO_SAMPLE_DESCRIPTIONS[0]));
+  for ( auto t=0; t<iArrSize; t++ )  {
+    if ( memcmp ( name, constants::VIDEO_SAMPLE_DESCRIPTIONS[t], 4 ) == 0 )
+      iPadding = 78;  // VisualSampleEntry fields before its child boxes (ISO/IEC 14496-12)
+  }
   if ( iPadding > iSize - iHeaderSize )  {
     std::cerr << "Error: Container padding exceeds box bounds." << std::endl;
     return NULL;
